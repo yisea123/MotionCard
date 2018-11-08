@@ -16,11 +16,11 @@
 /**************#define area**********/
 
 //减速比
-#define REDUCTION (1.0f/1.0f)
+#define REDUCTION (91.0f/6.0f)
 //车轮半径 单位:mm
-#define WHEELRADIUS 76.2f
+#define WHEELRADIUS 63.5f
 //每圈脉冲数
-#define STDPULSE 4096.0f
+#define STDPULSE 2000.0f
 
 //#define SUMMER
 
@@ -102,7 +102,6 @@ typedef struct
 	int32_t wheel1;
 	int32_t wheel2;
 	int32_t wheel3;
-	int32_t wheel4;	
 }wheel_t;
 
 //机器人位姿结构体类型
@@ -199,14 +198,12 @@ typedef struct{
 		int wheelVel1Want;
 		int wheelVel2Want;
 		int wheelVel3Want;
-		int wheelVel4Want;
 	}wheelVelWant;
 	
 	struct{
 		int wheelPosition1;
 		int wheelPosition2;
 		int wheelPosition3;
-		int wheelPosition4;
 	}wheelPosition;
 	
 	int posSystemReady;
@@ -243,8 +240,8 @@ typedef struct{
 	DirectionPoint_t endPoint;
 	
 	uint32_t robotFlag;
-	uint16_t wheelHB[4];
-	uint8_t wheelHardfault[4];
+	uint16_t wheelHB[3];
+	uint8_t wheelHardfault[3];
 	uint8_t courtInfo;
 }Robot_t;
 

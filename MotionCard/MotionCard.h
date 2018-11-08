@@ -19,7 +19,6 @@ typedef struct
 	float v1;
 	float v2;
 	float v3;
-	float v4;
 }TriWheelVel_t;
 
 
@@ -39,7 +38,7 @@ typedef struct
 	float maxVel;
 }velPlan_t;
 
-extern void VelControlTriWheel(float v1,float v2,float v3, float v4);
+extern void VelControlTriWheel(float v1,float v2,float v3);
 
 extern float GetRobotRadius(void);
 
@@ -52,9 +51,9 @@ extern float GetVelMax(void);
 
 
 //需要外部实现，返回坐标和姿态
-extern float GetAngleZ(void);
-extern float GetPosx(void);
-extern float GetPosy(void);
+//extern float GetAngle(void);
+//extern float GetX(void);
+//extern float GetY(void);
 
 
 //开辟内存，使用前必须首先调用  num 最大存取点个数，一个点占28字节  ;返回1代表开辟成功

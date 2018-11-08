@@ -1,10 +1,10 @@
 #include "posSystem.h"
 #include "MotionCard.h"
 #include "math.h"
-
-
- 
-
+#include "stdint.h"
+#include "stm32f4xx_usart.h"
+#include "timer.h"
+#include "pps.h"
 
 /***********************************************************************************
 * @name 		CaculatePath
@@ -27,7 +27,7 @@ void CaculatePath(void)
 	
 	if(CaculateLenFlag == 1)
 	{
-		err = sqrt((GetPosx() - posXOld)*(GetPosx() - posXOld) + (GetPosy() - posYOld)*(GetPosy() - posYOld));
+		err = sqrt((GetX() - posXOld)*(GetX() - posXOld) + (GetY() - posYOld)*(GetY() - posYOld));
 		if(err> 0.5f)
 		{
 			lengthTwoWheel += err;
@@ -35,8 +35,8 @@ void CaculatePath(void)
 
 	}
 
-	posXOld = GetPosx();
-	posYOld = GetPosy();
+	posXOld = GetX();
+	posYOld = GetY();
 }
 
 
@@ -86,9 +86,9 @@ int GetPath(void)
 Pose_t GetPosPresent(void)
 {
 	Pose_t pos;
-	pos.point.x = GetPosx();
-	pos.point.y = GetPosy();
-	pos.direction   = GetAngleZ();
+	pos.point.x = GetX();
+	pos.point.y = GetY();
+	pos.direction   = GetAngle();
 	return pos;
 }
 
@@ -99,6 +99,9 @@ void ClearPathLen(void)
 	lengthTwoWheel = 0.0f;
 	UpdateLenBegin();
 }
+
+
+
 
 
 

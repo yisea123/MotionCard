@@ -426,17 +426,6 @@ int BspSegment(int num, Pose_t* points, KeyPointInf_t* keyPoint,int lineMode)
 		controlPoint[i + 2].y = soluctionY[i];
 	}
 
-	/*****************************************************************************/
-	if(lineMode)
-	{
-		controlPoint[3].x = points[1].point.x;		controlPoint[3].y = points[1].point.y;
-		controlPoint[4].x = points[2].point.x;		controlPoint[4].y = points[2].point.y;
-		controlPoint[5].x = points[3].point.x;		controlPoint[5].y = points[3].point.y;
-		controlPoint[6].x = points[4].point.x;		controlPoint[6].y = points[4].point.y;
-	}
-
-	/*****************************************************************************/
-
 
 	//计算型值点，分成很近的点，取15cm一段
 	//从初始点开始

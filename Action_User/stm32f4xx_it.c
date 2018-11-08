@@ -102,6 +102,38 @@ void CAN1_RX0_IRQHandler(void)
 			//位置
 			if(msg.data32[0]==0x00005850)
 			{
+				gRobot.wheelPosition.wheelPosition1 = msg.data32[1];
+			}
+		
+			//速度
+			if(msg.data32[0]==0x00005856)
+			{
+				gRobot.wheelVel.v1 = msg.data32[1];
+				debugInfo.wheelActVel.wheel1 = gRobot.wheelVel.v1;
+				if(gRobot.wheelHB[0]<1)
+				{
+					gRobot.wheelHB[0]=1;
+				}
+				gRobot.wheelHB[0]--;
+			}
+			if(msg.data32[0]==0x22222222)
+			{
+				if(msg.data32[1]==0x22222222)
+				{
+					gRobot.wheelHardfault[0] = 1;
+				}
+			}
+			if(msg.data32[0]==*(uint32_t *)"STAW")
+			{
+				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+				(uint8_t *)"\r\nWheel Id 1 mga:%d\r\n",msg.data32[1]);
+			}
+			break;
+		case  2:
+			
+			//位置
+			if(msg.data32[0]==0x00005850)
+			{
 				gRobot.wheelPosition.wheelPosition2 = msg.data32[1];
 			}
 		
@@ -126,10 +158,10 @@ void CAN1_RX0_IRQHandler(void)
 			if(msg.data32[0]==*(uint32_t *)"STAW")
 			{
 				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-				(uint8_t *)"\r\nWheel Id 1 mga:%d\r\n",msg.data32[1]);
+				(uint8_t *)"\r\nWheel Id 2 mga:%d\r\n",msg.data32[1]);
 			}
 			break;
-		case  2:
+		case  3:
 			
 			//位置
 			if(msg.data32[0]==0x00005850)
@@ -158,73 +190,7 @@ void CAN1_RX0_IRQHandler(void)
 			if(msg.data32[0]==*(uint32_t *)"STAW")
 			{
 				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-				(uint8_t *)"\r\nWheel Id 2 mga:%d\r\n",msg.data32[1]);
-			}
-			break;
-		case  3:
-			
-			//位置
-			if(msg.data32[0]==0x00005850)
-			{
-				gRobot.wheelPosition.wheelPosition4 = msg.data32[1];
-			}
-		
-			//速度
-			if(msg.data32[0]==0x00005856)
-			{
-				gRobot.wheelVel.v4 = msg.data32[1];
-				debugInfo.wheelActVel.wheel4 = gRobot.wheelVel.v4;
-				if(gRobot.wheelHB[3]<1)
-				{
-					gRobot.wheelHB[3]=1;
-				}
-				gRobot.wheelHB[3]--;
-			}
-			if(msg.data32[0]==0x22222222)
-			{
-				if(msg.data32[1]==0x22222222)
-				{
-					gRobot.wheelHardfault[3] = 1;
-				}
-			}
-			if(msg.data32[0]==*(uint32_t *)"STAW")
-			{
-				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
 				(uint8_t *)"\r\nWheel Id 3 mga:%d\r\n",msg.data32[1]);
-			}
-			break;
-		case  4:
-			
-			//位置
-			if(msg.data32[0]==0x00005850)
-			{
-				gRobot.wheelPosition.wheelPosition1 = msg.data32[1];
-			}
-		
-			//速度
-			if(msg.data32[0]==0x00005856)
-			{
-				gRobot.wheelVel.v1 = msg.data32[1];
-				debugInfo.wheelActVel.wheel1 = gRobot.wheelVel.v1;
-				if(gRobot.wheelHB[0]<1)
-				{
-					gRobot.wheelHB[0]=1;
-				}
-				gRobot.wheelHB[0]--;
-			}
-			
-			if(msg.data32[0]==0x22222222)
-			{
-				if(msg.data32[1]==0x22222222)
-				{
-					gRobot.wheelHardfault[0] = 1;
-				}
-			}
-			
-			if(msg.data32[0]==*(uint32_t *)"STAW")
-			{
-				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-				(uint8_t *)"\r\nWheel Id 4 mga:%d\r\n",msg.data32[1]);
 			}
 			break;
 		default:

@@ -15,7 +15,7 @@ TriWheelVel2_t GetTrueVell(TriWheelVel_t wheelVell, float zAngle);
 
 void FourWheelVelControl(float Vx, float Vy, float rotationVell);
 
-void VelControlTriWheel(float v1,float v2,float v3,float v4);
+void VelControlTriWheel(float v1,float v2,float v3);
 float Vel2Pulse(float vel);
 
 

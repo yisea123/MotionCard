@@ -27,7 +27,7 @@
 #include "posSystem.h"
 #include "flash.h"
 #include "SpeedPlaning.h"
-
+#include "pps.h"
 //定时器10ms来一次
 _Bool USARTSEND = 0;
 /*********************************************************************
@@ -56,7 +56,7 @@ int PoseSampling(void)
 			//加入第一点
 			pos.point = point1;
 			pos.angle = anglee;
-			pos.poseAngle = GetAngleZ();
+			pos.poseAngle = GetAngle();
 			pos.length = 0;
 			//第一点先不对曲率半径赋值
 			PutRingBuffer(pos);
@@ -75,7 +75,7 @@ int PoseSampling(void)
 					if((GetPath()-pathOld) > 150.0f)
 					{
 						point2  = GetPosPresent().point;
-						posAngle= GetAngleZ();
+						posAngle= GetAngle();
 						pathOld = GetPath();
 						step = 2;
 					}
@@ -142,7 +142,7 @@ void PoseSamplingLastPoint(void)
 
 		pos.point = point2;
 
-		pos.poseAngle = GetAngleZ();
+		pos.poseAngle = GetAngle();
 
 		pos.angle = GetRingBufferPointAngle(n);
 

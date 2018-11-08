@@ -21,7 +21,8 @@
 #include "iwdg.h"
 #include "pathFollowing.h"
 #include "Move.h"
-
+#include "posSystem.h"
+#include "pps.h"
 /*
 ===============================================================
 						信号量定义
@@ -106,10 +107,10 @@ void HardWareInit(void)
 	USARTDMASendInit(DEBUG_USART,DebugUSARTDMASendBuf,&DebugBLE_Init,921600);
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
 				(uint8_t *)"\r\nConfiguration Start!!\r\n");
-
+	Delay_ms(500);
 	//初始化定位系统用串口USART3
 	GYR_Init(115200);
-	USART2_Init(115200);
+	USART1_Init(921600);
 //	ReStartThePosSystem();
 	Delay_ms(3000);
 	
@@ -175,7 +176,6 @@ void MotorInit(void)
 	VelLoopCfg(CAN1, 1, 5000000, 5000000);
 	VelLoopCfg(CAN1, 2, 5000000, 5000000);
 	VelLoopCfg(CAN1, 3, 5000000, 5000000);
-	VelLoopCfg(CAN1, 4, 50000000, 50000000);
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
 			(uint8_t *)"Vel loop Init!!\r\n");
 
@@ -184,7 +184,6 @@ void MotorInit(void)
 	MotorOn(CAN1, 1);
 	MotorOn(CAN1, 2);
 	MotorOn(CAN1, 3);
-	MotorOn(CAN1, 4);
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
 			(uint8_t *)"Motor On!!\r\n");
 
@@ -193,7 +192,6 @@ void MotorInit(void)
 	VelCrl(CAN1,1,0);
 	VelCrl(CAN1,2,0);
 	VelCrl(CAN1,3,0);
-	VelCrl(CAN1,4,0);
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
 			(uint8_t *)"Motor Init Finish!!\r\n");
 }
@@ -203,18 +201,18 @@ void ConfigTask(void)
 	CPU_INT08U  os_err;
 	os_err = os_err;
 	//初始化中断优先级分组
+	Delay_ms(500);
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);	
 	
 	//硬件初始化
 	HardWareInit();
 
-//	//涵道电调初始化时间
-	Delay_ms(1000);
-	
+//	//涵道电调初始化时间	
 	#ifndef SUMMER
 	//电机初始化
 	MotorInit();
 	#endif
+	WaitOpsPrepare();
 
 //	Delay_ms(2000);
 //	while(1)
@@ -224,18 +222,35 @@ void ConfigTask(void)
 	//初始化控制卡用循环数组
 	BufferZizeInit(500);
 	
-	while(!(gRobot.robotFlag&POS_1_SYSTEM_READY)||!(gRobot.robotFlag&POS_2_SYSTEM_READY))
-	{	
-		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-			(uint8_t *)"Wait For OPS!!\r\n");	
-		Delay_ms(5);
-	};	
-	
+//	Pose_t points[5] = 
+//	{
+//		{0.0,0.0,0.0},
+//		{0.0,500.0,0.0},
+//		{0.0,1000.0,0.0},
+//		{0.0,1500.0,0.0},
+//		{0.0,2000.0,0.0}
+//	};
+	Pose_t points[5] = 
+	{
+		{0.0,0.0,0.0},
+		{500.0,0.0,0.0},
+		{1000.0,0.0,0.0},
+		{1500.0,0.0,0.0},
+		{2000.0,0.0,0.0}
+	};
+
+	velPlan_t velPlan = {0.0,0.0,500.0};
 	//规划第一条路径
-	
+	InputPoints2RingBuffer(points,5, 1 , velPlan);
 	//发送初始化完成
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-			(uint8_t *)"\r\nFinish Init!\r\n");
+			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
+	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
+	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
+	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
 	OSTaskSuspend(OS_PRIO_SELF);
 }
 
@@ -251,9 +266,9 @@ void VelCtrTask(void)
 		OSSemPend(velCtrPeriodSem, 0, &os_err);
 		OSSemSet(velCtrPeriodSem,0,&os_err);
 		
-		VelControl((carVel_t){sqrtf(gRobot.speed.realX*gRobot.speed.realX + gRobot.speed.realY*gRobot.speed.realY),\
-								atan2f(gRobot.speed.realY,gRobot.speed.realX)*CHANGE_TO_ANGLE});		
-
+		VelControl((carVel_t){sqrtf(GetSpeedX()*GetSpeedX() + GetSpeedY()*GetSpeedY()),\
+								atan2f(GetSpeedY(),GetSpeedX())*CHANGE_TO_ANGLE});		
+	
 	}
 }
 void ShootTask(void)
@@ -270,12 +285,14 @@ void ShootTask(void)
 		//将信号量清零避免因为使用延时导致的信号量积累
 		OSSemSet(PeriodSem,0,&os_err);
 
-
-			ReadActualVel(CAN1, 101);
+			PathFollowing(0.1,1);
+		
+			ReadActualVel(CAN1,1);
+			ReadActualVel(CAN1,2);
+			ReadActualVel(CAN1,3);
 			gRobot.wheelHB[0]++;
 			gRobot.wheelHB[1]++;
 			gRobot.wheelHB[2]++;
-			gRobot.wheelHB[3]++;
 
 		if(gRobot.wheelHardfault[0]==1)
 		{
@@ -292,12 +309,7 @@ void ShootTask(void)
 			USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
 						(uint8_t *)"Wheel3HardFualt!");			
 		}
-		if(gRobot.wheelHardfault[3]==1)
-		{
-			USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-						(uint8_t *)"Wheel4HardFualt!");			
-		}
-		if(gRobot.wheelHB[0]>50||gRobot.wheelHB[1]>50||gRobot.wheelHB[2]>50||gRobot.wheelHB[3]>50)
+		if(gRobot.wheelHB[0]>50||gRobot.wheelHB[1]>50||gRobot.wheelHB[2]>50)
 		{
 				if(gRobot.wheelHB[0]>50)
 				{
@@ -316,12 +328,6 @@ void ShootTask(void)
 					USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
 										(uint8_t *)"WHEEL3LOST!");
 					gRobot.wheelHB[2]=51;
-				}
-				if(gRobot.wheelHB[3]>50)
-				{
-					USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-										(uint8_t *)"WHEEL4LOST!");
-					gRobot.wheelHB[3]=51;
 				}
 		}
 		

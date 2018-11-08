@@ -411,6 +411,11 @@
               <FileType>4</FileType>
               <FilePath>..\Action_User\arm_cortexM4lf_math.lib</FilePath>
             </File>
+            <File>
+              <FileName>pps.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\MotionCard\pps.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

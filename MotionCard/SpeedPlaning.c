@@ -6,7 +6,8 @@
 #include "Move.h"
 #include "usart.h"
 #include "calculate.h"
-
+#include "dma.h"
+#include "timer.h"
 
 float GetAxisAccMax(void)
 {
@@ -29,7 +30,7 @@ float GetVelMax(void)
 //wheelOne 一号轮速度数组首地址
 //wheelTwo 	二号轮速度数组首地址
 //wheelThree 三号轮速度数组首地址
-void DynamicalAjusting(float* wheelOne, float* wheelTwo, float* wheelThree, float* wheelFour)
+void DynamicalAjusting(float* wheelOne, float* wheelTwo, float* wheelThree)
 {
 	float time = 0.0f;
 	int n = GetCount();
@@ -79,17 +80,6 @@ void DynamicalAjusting(float* wheelOne, float* wheelTwo, float* wheelThree, floa
 			wheelThree[i - 1] =  wheelThree[i - 2] + velDirection*tempAcc*percent * time;
 		}		
 
-		//轮4
-		velDirection = wheelFour[i - 1] - wheelFour[i - 2] >= 0 ? 1 : -1;
-
-		tempAcc = fabs(wheelFour[i - 1] - wheelFour[i - 2]) / time;
-
-		if (tempAcc > GetAxisAccMax())
-		{
-			//每次削减0.05的加速度
-			wheelFour[i - 1] =  wheelFour[i - 2] + velDirection*tempAcc*percent * time;
-		}	
-
 	}
 
 	for (int i = 0; i < n - 1; i++)
@@ -99,9 +89,14 @@ void DynamicalAjusting(float* wheelOne, float* wheelTwo, float* wheelThree, floa
 		tempTrueVell.v1 = wheelOne[i];
 		tempTrueVell.v2 = wheelTwo[i];
 		tempTrueVell.v3 = wheelThree[i];
-		tempTrueVell.v4 = wheelFour[i];
-
+		
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"tempTrueVell.v1:\t%d\ttempTrueVell.v2:\t%d\ttempTrueVell.v3:\t%d\tGetRingBufferPointPoseAngle(i+1):%d\r\n",\
+			(int)tempTrueVell.v1,(int)tempTrueVell.v2,(int)tempTrueVell.v3,(int)GetRingBufferPointPoseAngle(i+1));
+		Delay_ms(2);
 		tempVel2 = GetTrueVell(tempTrueVell,GetRingBufferPointPoseAngle(i+1));
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"tempVel2.speed:\t%d\r\n",(int)tempVel2.speed);
 		SetRingBufferPointVell(i + 1, tempVel2.speed);
 	}
 }
@@ -120,7 +115,7 @@ void DynamicalAjusting(float* wheelOne, float* wheelTwo, float* wheelThree, floa
 //wheelOne 一号轮速度数组首地址
 //wheelTwo 	二号轮速度数组首地址
 //wheelThree 三号轮速度数组首地址
-void CalculateThreeWheelVell(float* wheelOne,float* wheelTwo,float* wheelThree, float* wheelFour)
+void CalculateThreeWheelVell(float* wheelOne,float* wheelTwo,float* wheelThree)
 {
 	//分解到三个轮对全局速度进行规划
 	TriWheelVel_t threeVell;
@@ -142,20 +137,19 @@ void CalculateThreeWheelVell(float* wheelOne,float* wheelTwo,float* wheelThree, 
 
 		threeVell = CaculateThreeWheelVel(GetRingBufferPointVell(i), GetRingBufferPointAngle(i), rotationVell, GetRingBufferPointPoseAngle(i));
 
+//			
+//		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//		(uint8_t *)"directionK %d direction %d\r\n",(int)(directionK * 100),(int)direction);
 
 		wheelOne[i - 1] = threeVell.v1;
 
 		wheelTwo[i - 1] = threeVell.v2;
 
 		wheelThree[i - 1] = threeVell.v3;
-
-		wheelFour[i - 1] = threeVell.v4;
-
 	}
 	wheelOne[0] = wheelOne[1];
 	wheelTwo[0] = wheelTwo[1];
 	wheelThree[0] = wheelThree[1];
-	wheelFour[0] = wheelFour[1];
 }
 
 
@@ -167,8 +161,7 @@ void CalculateThreeWheelVell(float* wheelOne,float* wheelTwo,float* wheelThree, 
 //orientation 速度朝向 单位 度
 //rotationalVell 旋转速度 单位 度每秒
 //wheelNum  所降速的轮号
- // targetWheelVell   所降速的目标
-// 返回所降低后的合速度
+ // targetWheelVell   所降速的 标/ 回降低的合速度
 float DecreseVellByOneWheel(float vellCar, float orientation, float rotationalVell,float zAngle, int wheelNum, float targetWheelVell)
 {
 	TriWheelVel_t vell;
@@ -214,19 +207,6 @@ float DecreseVellByOneWheel(float vellCar, float orientation, float rotationalVe
 				}
 			}
 			break;
-
-		case 4:
-			for (i = 0; i < 10; i++)
-			{
-
-				vellCar *= 0.9f;
-				vell = CaculateThreeWheelVel(vellCar, orientation, rotationalVell, zAngle);
-				if (fabs(vell.v4) < fabs(targetWheelVell))
-				{
-					break;
-				}
-			}
-			break;
 	}
 	return vellCar;
 }
@@ -236,21 +216,42 @@ float GetAccLimit(float direction)
 	float directionK = 0.0f;
 	float accLimitX = 0.0f , accLimitY = 0.0f;
 	
-	directionK = tan(direction*CHANGE_TO_RADIAN);
-	if(isinf(directionK))
+	directionK = tan((double)(direction*CHANGE_TO_RADIAN));
+	
+//	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//		(uint8_t *)"directionK %d direction %d\r\n",(int)(directionK * 100),(int)direction);
+
+	if(fabs(directionK)>2000)
 	{
-		return GetAxisAccMax()*sqrtf(2);
+		return GetAxisAccMax();
 	}
 	else
 	{
-		if(directionK>=0.0f)
+		if(direction>=0.0f && direction<60.0f)
 		{
-			accLimitX = sqrt(2) * GetAxisAccMax()/(directionK + 1.0f);
+			accLimitX = 2 * sqrt(3) * GetAxisAccMax()/(directionK + sqrt(3));
 		}
-		else
+		else if(direction>=60.0f && direction<120.0f)
 		{
-			accLimitX = -sqrt(2) * GetAxisAccMax()/(directionK - 1.0f);
+			accLimitX = sqrt(3) * GetAxisAccMax()/directionK;
 		}
+		else if(direction>=120.0f && direction<=180.0f)
+		{
+			accLimitX = 2 * sqrt(3) * GetAxisAccMax()/(directionK - sqrt(3));
+		}
+		else if(direction>=-60.0f && direction<0.0f)
+		{
+			accLimitX = -2 * sqrt(3) * GetAxisAccMax()/(directionK - sqrt(3));
+		}
+		else if(direction>=60.0f && direction<120.0f)
+		{
+			accLimitX = -sqrt(3) * GetAxisAccMax()/directionK;
+		}
+		else if(direction>=-180.0f && direction<-120.0f)
+		{
+			accLimitX = -2 * sqrt(3) * GetAxisAccMax()/(directionK + sqrt(3));
+		}
+		
 	}
 	
 	accLimitY = directionK * accLimitX;
@@ -261,43 +262,57 @@ float GetAccLimit(float direction)
 
 float GetVelLimit(float direction)
 {
-	float directionK = 0.0f;
-	float velLimitX = 0.0f , velLimitY = 0.0f;
+	float velLimitOnAccAxisX = 0.0f , velLimitOnAccAxisY = 0.0f , velLimitOnAccAxisZ = 0.0f;
+	int velLimitSign = 0;
+	float velLimit = 0.0f;
 	
-	directionK = tan(direction*CHANGE_TO_RADIAN);
-	if(isinf(directionK))
+	velLimitOnAccAxisX = CalculateVectorProject((vector_t){GetAxisAccMax()  , direction} , (vector_t){GetAxisAccMax(),0.0f});
+	velLimitOnAccAxisY = CalculateVectorProject((vector_t){GetAxisAccMax()  , direction} , (vector_t){GetAxisAccMax(),60.0f});
+	velLimitOnAccAxisZ = CalculateVectorProject((vector_t){GetAxisAccMax()  , direction} , (vector_t){GetAxisAccMax(),120.0f});
+
+	if(velLimitOnAccAxisX >= velLimitOnAccAxisY)
 	{
-		return GetVelMax();
+		velLimitSign = velLimitOnAccAxisX > velLimitOnAccAxisZ ? 1 : 2;
 	}
 	else
 	{
-		if(directionK>=0.0f)
-		{
-			velLimitX = GetVelMax()/(directionK + 1.0f);
-		}
-		else
-		{
-			velLimitX = -GetVelMax()/(directionK - 1.0f);
-		}
+		velLimitSign = velLimitOnAccAxisY > velLimitOnAccAxisZ ? 2 : 3;
 	}
 	
-	velLimitY = directionK * velLimitX;
-	
-	return sqrtf(velLimitX * velLimitX + velLimitY * velLimitY);
-	
+	switch(velLimitSign)
+	{
+		case 1 :
+		{			
+			velLimit = CalculateVectorFromProject(velLimitOnAccAxisX , direction , 0.0f).module;
+			break;
+		}
+		case 2 :
+		{			
+			velLimit = CalculateVectorFromProject(velLimitOnAccAxisY , direction , 60.0f).module;
+			break;
+		}
+		case 3 :
+		{			
+			velLimit = CalculateVectorFromProject(velLimitOnAccAxisZ , direction , 120.0f).module;
+			break;
+		}	
+
+	}
+	return velLimit;
 }
 
 float CalculateAccT(float accN , float accNDirection , float accTDirection)
 {
-	float accNOnAccAxisX = 0.0f , accNOnAccAxisY = 0.0f;
-	float accTLimitOnAccAxisX = 0.0f , accTLimitOnAccAxisY = 0.0f;
-	float accTFromX = 0.0f , accTFromY = 0.0f;
+	float accNOnAccAxisX = 0.0f , accNOnAccAxisY = 0.0f , accNOnAccAxisZ = 0.0f;
+	float accTLimitOnAccAxisX = 0.0f , accTLimitOnAccAxisY = 0.0f ,accTLimitOnAccAxisZ = 0.0f;
+	float accTFromX = 0.0f , accTFromY = 0.0f , accTFromZ = 0.0f;
 	float accTLimit = 0.0f;
 	
-	accNOnAccAxisX = CalculateVectorProject((vector_t){accN, accNDirection} , (vector_t){GetAxisAccMax(),45.0f});
-	accNOnAccAxisY = CalculateVectorProject((vector_t){accN, accNDirection} , (vector_t){GetAxisAccMax(),135.0f});
+	accNOnAccAxisX = CalculateVectorProject((vector_t){accN, accNDirection} , (vector_t){GetAxisAccMax(),0.0f});
+	accNOnAccAxisY = CalculateVectorProject((vector_t){accN, accNDirection} , (vector_t){GetAxisAccMax(),60.0f});
+	accNOnAccAxisZ = CalculateVectorProject((vector_t){accN, accNDirection} , (vector_t){GetAxisAccMax(),120.0f});
 	
-	if(accTDirection>=-45.0f&&accTDirection<=135.0f)
+	if(accTDirection>=-90.0f&&accTDirection<=90.0f)
 	{
 		accTLimitOnAccAxisX = GetAxisAccMax() - accNOnAccAxisX;		
 	}
@@ -306,7 +321,7 @@ float CalculateAccT(float accN , float accNDirection , float accTDirection)
 		accTLimitOnAccAxisX = -GetAxisAccMax() - accNOnAccAxisX;				
 	}
 	
-	if(accTDirection>=45.0f||accTDirection<=-135.0f)
+	if(accTDirection>=-30.0f&&accTDirection<=150.0f)
 	{
 		accTLimitOnAccAxisY = GetAxisAccMax() - accNOnAccAxisY;		
 	}
@@ -315,13 +330,24 @@ float CalculateAccT(float accN , float accNDirection , float accTDirection)
 		accTLimitOnAccAxisY = -GetAxisAccMax() - accNOnAccAxisY;		
 	}
 	
-	accTFromX = CalculateVectorFromProject(accTLimitOnAccAxisX , accTDirection , 45.0f).module;
+	if(accTDirection>=30.0f||accTDirection<=-150.0f)
+	{
+		accTLimitOnAccAxisZ = GetAxisAccMax() - accNOnAccAxisZ;		
+	}
+	else
+	{
+		accTLimitOnAccAxisZ = -GetAxisAccMax() - accNOnAccAxisZ;		
+	}
 	
-	accTFromY = CalculateVectorFromProject(accTLimitOnAccAxisY , accTDirection , 135.0f).module;
+	accTFromX = CalculateVectorFromProject(accTLimitOnAccAxisX , accTDirection , 0.0f).module;
 	
-	accTLimit = fabs(accTFromX)>=fabs(accTFromY)?fabs(accTFromY):fabs(accTFromX);
+	accTFromY = CalculateVectorFromProject(accTLimitOnAccAxisY , accTDirection , 60.0f).module;
 	
-	if(accTDirection==45.0f||accTDirection==135.0f||accTDirection==-135.0f||accTDirection==-45.0f)
+	accTFromZ = CalculateVectorFromProject(accTLimitOnAccAxisZ , accTDirection , 120.0f).module;
+	
+	accTLimit = ((fabs(accTFromX)>=fabs(accTFromY)?fabs(accTFromY):fabs(accTFromX))>=fabs(accTFromZ)?fabs(accTFromZ):(fabs(accTFromX)>=fabs(accTFromY)?fabs(accTFromY):fabs(accTFromX)));
+	
+	if(accTDirection==0.0f||accTDirection==60.0f||accTDirection==120.0f||accTDirection==180.0f||accTDirection==-60.0f||accTDirection==-120.0f)
 	{
 		accTLimit = GetAxisAccMax();
 	}
@@ -339,7 +365,6 @@ void SpeedPlaning(velPlan_t velPlan)
 	float* wheelOne = NULL;
 	float* wheelTwo = NULL;
 	float* wheelThree = NULL;
-	float* wheelFour = NULL;
 	float* curveNormalDirection = NULL;
 
 
@@ -350,7 +375,6 @@ void SpeedPlaning(velPlan_t velPlan)
 	wheelOne = (float *)malloc(n*sizeof(float));
 	wheelTwo = (float *)malloc(n*sizeof(float));
 	wheelThree = (float *)malloc(n*sizeof(float));
-	wheelFour = (float *)malloc(n*sizeof(float));
 	curveNormalDirection = (float *)malloc(n*sizeof(float));
 
 
@@ -376,7 +400,15 @@ void SpeedPlaning(velPlan_t velPlan)
 	//通过曲率半径计算该段能满足的最大速度
 	for (int i = 0; i < n; i++)
 	{
+		Delay_ms(5);
 		vell[i] = sqrt((1.0f * GetAccLimit(curveNormalDirection[i])) * curvature[i]);
+		
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"NormalDirection:\t%d\t",(int)curveNormalDirection[i]);
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"curvature[%d]\t:\t%d\tvell[%d]\t:\t%d\r\n",\
+		i,(int)curvature[i],i,(int)(vell[i]));
+		
 		if(vell[i]>GetVelLimit(GetRingBufferPointAngle(i + 1)))
 		{
 			vell[i] = GetVelLimit(GetRingBufferPointAngle(i + 1));
@@ -390,6 +422,18 @@ void SpeedPlaning(velPlan_t velPlan)
 	if(vell[0]<150.0f)
 	{
 		vell[0] = 150.0f;
+	}
+	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+	(uint8_t *)"init speed:\r\n");
+	for(int i = 0;i<n;i++)
+	{
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"%d\t%d\t",(int)curvature[i],(int)GetRingBufferPointAngle(i+1));
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"%d\t",(int)curveNormalDirection[i]);
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"%d\r\n",(int)vell[i]);
+		Delay_ms(5);
 	}
 	
 	//临时计算速度变量
@@ -489,7 +533,27 @@ void SpeedPlaning(velPlan_t velPlan)
 			}
 		}
 	}
-
+	
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"middle 1 speed:\r\n");
+	for(int i = 0;i<n;i++)
+	{
+//		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//			(uint8_t *)"%d\t%d\t",(int)curvature[i],(int)GetRingBufferPointAngle(i+1));
+//		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//			(uint8_t *)"%d\t",(int)curveNormalDirection[i]);
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"%d\r\n",(int)vell[i]);
+		Delay_ms(5);
+	}
+//	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//	(uint8_t *)"UP1 speed:\r\n");
+//	for(int i = 0;i<n;i++)
+//	{
+//		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//			(uint8_t *)"%d\r\n",(int)vell[i]);
+//		Delay_ms(5);
+//	}	
 	for (int i = n - 1; i > 0; i--)
 	{
 		if (vell[i - 1] > vell[i])
@@ -570,7 +634,18 @@ void SpeedPlaning(velPlan_t velPlan)
 		}
 	}
 
-
+	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"middle 2 speed:\r\n");
+	for(int i = 0;i<n;i++)
+	{
+//		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//			(uint8_t *)"%d\t%d\t",(int)curvature[i],(int)GetRingBufferPointAngle(i+1));
+//		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//			(uint8_t *)"%d\t",(int)curveNormalDirection[i]);
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"%d\r\n",(int)vell[i]);
+		Delay_ms(5);
+	}
 	//将暂时规划的速度放入环形数组里
 	for (int i = 0; i < n; i++)
 	{
@@ -578,8 +653,15 @@ void SpeedPlaning(velPlan_t velPlan)
 	}
 
 	//计算此时三个轮的速度
-	CalculateThreeWheelVell(wheelOne, wheelTwo, wheelThree, wheelFour);
+	CalculateThreeWheelVell(wheelOne, wheelTwo, wheelThree);
 
+	for (int i = 1; i < n; i++)
+	{
+		USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"whe elOne:%d\twheelTwo:%d\twheelThree:%d\r\n",(int)wheelOne[i],(int)wheelTwo[i],(int)wheelThree[i]);
+		Delay_ms(2);	
+	}
+			
 	//动态的对速度进行平衡
 	while (1)
 	{
@@ -596,37 +678,43 @@ void SpeedPlaning(velPlan_t velPlan)
 			time = lll / vvv;
 
 
-			float a1, a2, a3, a4;
+			float a1, a2, a3;
 			//如果判断某一个轮子加速度大于最大加速度时，进行调节
 
 			a1 = (wheelOne[ipoint - 1] - wheelOne[ipoint - 2]) / time;
 			a2 = (wheelTwo[ipoint - 1] - wheelTwo[ipoint - 2]) / time;
 			a3 = (wheelThree[ipoint - 1] - wheelThree[ipoint - 2]) / time;
-			a4 = (wheelFour[ipoint - 1] - wheelFour[ipoint - 2]) / time;
 			if ( ((a1 > GetAxisAccMax()) && (wheelOne[ipoint - 1] * wheelOne[ipoint - 2] > 0))\
 				|| ((a2 > GetAxisAccMax()) && (wheelTwo[ipoint - 1] * wheelTwo[ipoint - 2] > 0))\
-				|| ((a3 > GetAxisAccMax()) && (wheelThree[ipoint - 1] * wheelThree[ipoint - 2] > 0))\
-				|| ((a4 > GetAxisAccMax()) && (wheelFour[ipoint - 1] * wheelFour[ipoint - 2] > 0)))
+				|| ((a3 > GetAxisAccMax()) && (wheelThree[ipoint - 1] * wheelThree[ipoint - 2] > 0)))
 			{
 				//平衡法规划速度
-				DynamicalAjusting(wheelOne, wheelTwo, wheelThree, wheelFour);
-
+				DynamicalAjusting(wheelOne, wheelTwo, wheelThree);
 				break;
 			}
 		}
 
-
+		
 		if (ipoint == n)
 		{
 
+			for (int i = 1; i < n; i++)
+			{
+				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+				(uint8_t *)"wheelOne:%d\twheelTwo:%d\twheelThree:%d\t",(int)wheelOne[i],(int)wheelTwo[i],(int)wheelThree[i]);
+				Delay_ms(5);
+				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+				(uint8_t *)"%d\r\n",(int)GetRingBufferPointVell(i));
+				
+			}
+	
 			for (int i = 1; i < n; i++)
 			{
 				TriWheelVel_t tempTrueVell;
 				tempTrueVell.v1 = wheelOne[i];
 				tempTrueVell.v2 = wheelTwo[i];
 				tempTrueVell.v3 = wheelThree[i];
-				tempTrueVell.v4 = wheelFour[i];
-				float vellCar1, vellCar2, vellCar3, vellCar4, vellCar;
+				float vellCar1, vellCar2, vellCar3, vellCar;
 				float angErr = GetRingBufferPointPoseAngle(i + 2) - GetRingBufferPointPoseAngle(i + 1);
 				angErr = angErr > 180 ? angErr - 360 : angErr;
 				angErr = angErr < -180 ? 360 + angErr : angErr;
@@ -640,32 +728,30 @@ void SpeedPlaning(velPlan_t velPlan)
 
 				vellCar3 = DecreseVellByOneWheel(GetRingBufferPointVell(i + 1), GetRingBufferPointAngle(i + 1), angErr / time, GetRingBufferPointPoseAngle(i + 1), 3, tempTrueVell.v3);
 
-				vellCar4 = DecreseVellByOneWheel(GetRingBufferPointVell(i + 1), GetRingBufferPointAngle(i + 1), angErr / time, GetRingBufferPointPoseAngle(i + 1), 4, tempTrueVell.v4);
+				
+				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+					(uint8_t *)"RingBufferPointVell:\t%d\tvellCar1:%d\tvellCar2:%d\tvellCar3:%d\t\r\n",(int)GetRingBufferPointVell(i+1),(int)vellCar1,(int)vellCar2,(int)vellCar3);
 
-				if (fabs(vellCar1) >= fabs(vellCar2) && fabs(vellCar1) >= fabs(vellCar3) && fabs(vellCar1) >= fabs(vellCar4))
+				if (fabs(vellCar1) >= fabs(vellCar2) && fabs(vellCar1) >= fabs(vellCar3))
 				{
 					vellCar = vellCar1;
 					//将计算的最新合速度放入缓存池中
 					SetRingBufferPointVell(i + 1, vellCar);
 				}
-				else if (fabs(vellCar2) >= fabs(vellCar1) && fabs(vellCar2) >= fabs(vellCar3)&& fabs(vellCar2) >= fabs(vellCar4))
+				else if (fabs(vellCar2) >= fabs(vellCar1) && fabs(vellCar2) >= fabs(vellCar3))
 				{
 					vellCar = vellCar2;
 					//将计算的最新合速度放入缓存池中
 					SetRingBufferPointVell(i + 1, vellCar);
 				}
-				else if (fabs(vellCar3) >= fabs(vellCar1) && fabs(vellCar3) >= fabs(vellCar2) && fabs(vellCar3) >= fabs(vellCar4))
+				else if (fabs(vellCar3) >= fabs(vellCar1) && fabs(vellCar3) >= fabs(vellCar2))
 				{
 					vellCar = vellCar3;
 					//将计算的最新合速度放入缓存池中
 					SetRingBufferPointVell(i + 1, vellCar);
 				}
-				else if (fabs(vellCar4) >= fabs(vellCar1) && fabs(vellCar4) >= fabs(vellCar2) && fabs(vellCar4) >= fabs(vellCar3))
-				{
-					vellCar = vellCar4;
-					//将计算的最新合速度放入缓存池中
-					SetRingBufferPointVell(i + 1, vellCar);
-				}
+				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+				(uint8_t *)"vellCar:\t%d\r\n",(int)vellCar);
 			}
 		}
 
@@ -755,11 +841,11 @@ void SpeedPlaning(velPlan_t velPlan)
 					if (tempVell < GetRingBufferPointVell(i + 2))
 					{
 						SetRingBufferPointVell(i + 2, tempVell);
+						USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+					(uint8_t *)"middle 3 speed: %d\r\n",tempVell);
 					}
 				}
 			}
-
-
 
 			for (int i = n - 1; i > 0; i--)
 			{
@@ -838,10 +924,11 @@ void SpeedPlaning(velPlan_t velPlan)
 					if (tempVell < GetRingBufferPointVell(i))
 					{
 						SetRingBufferPointVell(i, tempVell);
+						USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+					(uint8_t *)"middle 4 speed:\t%d\r\n",tempVell);
 					}
 				}
 			}
-
 			//将速度小于最小速度的做处理
 			for (int i = 2; i < n; i++)
 			{
@@ -862,15 +949,23 @@ void SpeedPlaning(velPlan_t velPlan)
 				SetRingBufferPointVell(n - 1, (GetRingBufferPointVell(n-2) + GetRingBufferPointVell(n))/2);		
 			}
 			
+			USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+				(uint8_t *)"Final Speed:\r\n");
+			
 			for (int i = 1; i < n; i++)
 			{
-				SetRingBufferPointVell(i, GetRingBufferPointVell(i));
+				SetRingBufferPointVell(i, GetRingBufferPointVell(i));	
+			}
+			for (int i = 1; i < n+1; i++)
+			{
+				USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"%d\r\n",(int)GetRingBufferPointVell(i));
+				Delay_ms(5);
 			}
 
 			free(wheelOne);
 			free(wheelTwo);
 			free(wheelThree);
-			free(wheelFour);
 			break;
 		}
 	}
