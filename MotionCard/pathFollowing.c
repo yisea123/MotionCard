@@ -25,6 +25,8 @@
 #include "stdint.h"
 #include "laser.h"
 #include "timer.h"
+#include "usart.h"
+#include "dma.h"
 
 static Pose_t finalPoint;
 extern Robot_t gRobot;
@@ -94,8 +96,6 @@ int PathFollowing(float percent, int viewMode)
 	//虚拟位置点
 	virtualPos = SerchVirtualPoint(robotlen);
 	
-
-
 	//计算当前点到虚拟位置点的距离(直线距离)
 	disRealPos2VirPos = CalculatePoint2PointDistance(presentLine.point,virtualPos.point);
 
@@ -201,15 +201,18 @@ float AngleControl(float anglePresent,float angleTarget)
 	dTermRecord = dTerm;
 	angleErrRecord = angleErr;
 	
-	if(angularVel>60.0f)
+//	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//			(uint8_t *)"%d\t%d\tangularVel\t%d\r\n",(int)angleTarget,(int)anglePresent,(int)angularVel);
+	
+	if(angularVel>30.0f)
 	{
-		angularVel = 60.0f;
+		angularVel = 30.0f;
 	}
-	else if(angularVel<-60.0f)
+	else if(angularVel<-30.0f)
 	{
-		angularVel = -60.0f;
+		angularVel = -30.0f;
 	}
-	return angularVel;
+	return (-angularVel);
 
 }
 

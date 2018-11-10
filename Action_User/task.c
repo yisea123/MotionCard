@@ -222,35 +222,29 @@ void ConfigTask(void)
 	//初始化控制卡用循环数组
 	BufferZizeInit(500);
 	
-//	Pose_t points[5] = 
-//	{
-//		{0.0,0.0,0.0},
-//		{0.0,500.0,0.0},
-//		{0.0,1000.0,0.0},
-//		{0.0,1500.0,0.0},
-//		{0.0,2000.0,0.0}
-//	};
 	Pose_t points[5] = 
 	{
 		{0.0,0.0,0.0},
-		{500.0,0.0,0.0},
-		{1000.0,0.0,0.0},
-		{1500.0,0.0,0.0},
-		{2000.0,0.0,0.0}
+		{0.0,500.0,0.0},
+		{0.0,1000.0,0.0},
+		{0.0,1500.0,0.0},
+		{0.0,2000.0,0.0}
 	};
+//	Pose_t points[5] = 
+//	{
+//		{0.0,0.0,0.0},
+//		{500.0,0.0,0.0},
+//		{1000.0,0.0,0.0},
+//		{1500.0,0.0,0.0},
+//		{2000.0,0.0,0.0}
+//	};
 
 	velPlan_t velPlan = {0.0,0.0,500.0};
 	//规划第一条路径
 	InputPoints2RingBuffer(points,5, 1 , velPlan);
 	//发送初始化完成
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
-	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
-	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
-	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-			(uint8_t *)"\r\nFinish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!Finish Init!\\r\n");
+			(uint8_t *)"\r\nFinish Init!\r\n");
 	OSTaskSuspend(OS_PRIO_SELF);
 }
 
@@ -285,7 +279,7 @@ void ShootTask(void)
 		//将信号量清零避免因为使用延时导致的信号量积累
 		OSSemSet(PeriodSem,0,&os_err);
 
-			PathFollowing(0.1,1);
+			PathFollowing(0.2,1);
 		
 			ReadActualVel(CAN1,1);
 			ReadActualVel(CAN1,2);

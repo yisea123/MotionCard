@@ -159,11 +159,11 @@ void VelControl(carVel_t actVel)
 		velErr.velAngle = targetVel.velAngle;
 	}
 	
-	velXOutput = velErr.carVel*cosf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
-	velYOutput = velErr.carVel*sinf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
+//	velXOutput = velErr.carVel*cosf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
+//	velYOutput = velErr.carVel*sinf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
 	
-//	velXOutput = targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
-//	velYOutput = targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
+	velXOutput = targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
+	velYOutput = targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
 	
 	outputVel.carVel = sqrtf(velXOutput*velXOutput + velYOutput*velYOutput);
 	outputVel.velAngle = atan2f(velYOutput , velXOutput)*CHANGE_TO_ANGLE;
@@ -173,7 +173,10 @@ void VelControl(carVel_t actVel)
 		outputVel.carVel = GetVelMax();
 	}
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-		(uint8_t *)"%d\t%d\t%d\t%d\t%d\t%d\r\n",(int)GetX(),(int)GetY(),(int)GetAngle(),(int)(targetVel.carVel),(int)(actVel.carVel),(int)velErr.carVel);
+		(uint8_t *)"%d\t%d\t%d\t%d\t%d\t%d\t",(int)GetX(),(int)GetY(),(int)GetAngle(),(int)(targetVel.carVel),(int)(actVel.carVel),(int)velErr.carVel);
+	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+		(uint8_t *)"%d\t%d\t%d\toutput:\t%d\t%d\t%d\ttarget:\t%d\t%d\r\n",\
+	(int)gRobot.wheelVel.v1,(int)gRobot.wheelVel.v2,(int)gRobot.wheelVel.v3,(int)outputVel.carVel,(int)outputVel.velAngle,(int)targetOmega,(int)targetVel.carVel,(int)targetVel.velAngle);
 	
 	ThreeWheelVelControl(outputVel.carVel, outputVel.velAngle, targetOmega);
 	
