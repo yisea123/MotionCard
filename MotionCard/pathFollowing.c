@@ -90,6 +90,9 @@ int PathFollowing(float percent, int viewMode)
 		VIEW_L = VIEW_L < 20 ? 20 : VIEW_L;
 	}
 	
+	//5ms计算一次轨迹长度
+	CaculatePath();
+	
 	//获取定位系统所计算的机器人实际行走路径长度
 	robotlen = GetPath();
 
@@ -98,6 +101,7 @@ int PathFollowing(float percent, int viewMode)
 	
 	//计算当前点到虚拟位置点的距离(直线距离)
 	disRealPos2VirPos = CalculatePoint2PointDistance(presentLine.point,virtualPos.point);
+	
 
 	if(GetPath() + VIEW_L - disRealPos2VirPos  > robotlen)
 	{
@@ -186,8 +190,8 @@ int PathFollowing(float percent, int viewMode)
 **********************************************************************************/
 float AngleControl(float anglePresent,float angleTarget)
 {
-	#define P_ANGLE_CONTROL 4.0f
-	#define D_ANGLE_CONTROL 3.0f
+	#define P_ANGLE_CONTROL 9.0f
+	#define D_ANGLE_CONTROL 1.0f
 	float angleErr = 0.0f,angularVel = 0.0f;
 	static float angleErrRecord = 0.0f , dTermRecord = 0.0f;
 	float dTerm = 0.0f;
@@ -201,17 +205,17 @@ float AngleControl(float anglePresent,float angleTarget)
 	dTermRecord = dTerm;
 	angleErrRecord = angleErr;
 	
-//	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-//			(uint8_t *)"%d\t%d\tangularVel\t%d\r\n",(int)angleTarget,(int)anglePresent,(int)angularVel);
-	
-	if(angularVel>30.0f)
+	if(angularVel>300.0f)
 	{
-		angularVel = 30.0f;
+		angularVel = 300.0f;
 	}
-	else if(angularVel<-30.0f)
+	else if(angularVel<-300.0f)
 	{
-		angularVel = -30.0f;
+		angularVel = -300.0f;
 	}
+	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+			(uint8_t *)"%d\t%d\t%d\r\n",(int)angleTarget,(int)anglePresent,(int)angularVel);
+	Delay_ms(2);
 	return (-angularVel);
 
 }

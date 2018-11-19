@@ -153,8 +153,6 @@ PointU_t SerchVirtualPoint(float robotLen)
 			break;
 	}
 	
-	
-	
 	//确定落在第i-1 到 i 上的距离
 	robotLen -= GetRingBufferPointLen(i-1);
 	

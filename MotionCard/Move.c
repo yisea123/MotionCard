@@ -120,8 +120,8 @@ void VelControl(carVel_t actVel)
 //		}			
 //	}
 
-	KpX = 0.6f;
-	KpY = 0.6f;
+	KpX = 0.7f;
+	KpY = 1.0f;
 	
 	if(fabs(velXErr)>=1500.0f)
 	{
@@ -148,9 +148,9 @@ void VelControl(carVel_t actVel)
 	
 	velErr.velAngle = atan2f(velYErr,velXErr)*CHANGE_TO_ANGLE;
 	
-	if(velErr.carVel>=500.0f)
+	if(velErr.carVel>=250.0f)
 	{
-		velErr.carVel = 500.0f;
+		velErr.carVel = 250.0f;
 	}
 	
 	if(velErr.carVel<50.0f)
@@ -159,11 +159,11 @@ void VelControl(carVel_t actVel)
 		velErr.velAngle = targetVel.velAngle;
 	}
 	
-//	velXOutput = velErr.carVel*cosf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
-//	velYOutput = velErr.carVel*sinf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
+	velXOutput = velErr.carVel*cosf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
+	velYOutput = velErr.carVel*sinf(velErr.velAngle*CHANGE_TO_RADIAN) + targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
 	
-	velXOutput = targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
-	velYOutput = targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
+//	velXOutput = targetVel.carVel*cosf(targetVel.velAngle*CHANGE_TO_RADIAN);
+//	velYOutput = targetVel.carVel*sinf(targetVel.velAngle*CHANGE_TO_RADIAN);
 	
 	outputVel.carVel = sqrtf(velXOutput*velXOutput + velYOutput*velYOutput);
 	outputVel.velAngle = atan2f(velYOutput , velXOutput)*CHANGE_TO_ANGLE;
@@ -173,13 +173,12 @@ void VelControl(carVel_t actVel)
 		outputVel.carVel = GetVelMax();
 	}
 	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-		(uint8_t *)"%d\t%d\t%d\t%d\t%d\t%d\t",(int)GetX(),(int)GetY(),(int)GetAngle(),(int)(targetVel.carVel),(int)(actVel.carVel),(int)velErr.carVel);
-	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
-		(uint8_t *)"%d\t%d\t%d\toutput:\t%d\t%d\t%d\ttarget:\t%d\t%d\r\n",\
-	(int)gRobot.wheelVel.v1,(int)gRobot.wheelVel.v2,(int)gRobot.wheelVel.v3,(int)outputVel.carVel,(int)outputVel.velAngle,(int)targetOmega,(int)targetVel.carVel,(int)targetVel.velAngle);
+		(uint8_t *)"%d\t%d\t%d\t%d\t%d\t%d\t%d\t",(int)GetX(),(int)GetY(),(int)GetAngle(),(int)(targetVel.carVel),(int)(actVel.carVel),(int)velErr.carVel,(int)outputVel.carVel);
+//	USARTDMAOUT(DEBUG_USART,DebugUSARTSendBuf,&DebugUSARTSendBuffCnt,DebugUSARTDMASendBuf,DEBUG_USART_SEND_BUF_CAPACITY,\
+//		(uint8_t *)"%d\t%d\t%d\toutput:\t%d\t%d\t%d\ttarget:\t%d\t%d\r\n",\
+//	(int)gRobot.wheelVel.v1,(int)gRobot.wheelVel.v2,(int)gRobot.wheelVel.v3,(int)outputVel.carVel,(int)outputVel.velAngle,(int)targetOmega,(int)targetVel.carVel,(int)targetVel.velAngle);
 	
 	ThreeWheelVelControl(outputVel.carVel, outputVel.velAngle, targetOmega);
-	
 	
 }
 
@@ -196,7 +195,7 @@ void ThreeWheelVelControl(float speed, float direction, float rotationVell)
 	float robotR = 0.0f;
 	static uint8_t outputErrCounter[3] = {0};
 	
-	speed*=GAIN_COMPENSATION;
+	speed*=GAIN_COMPENSATION;//用于矫正驱动器转速的稳态误差。使增益为1
 	
 	rotationVell*=GAIN_COMPENSATION;
 	
@@ -213,7 +212,7 @@ void ThreeWheelVelControl(float speed, float direction, float rotationVell)
 		}
 	}
 	
-	if(rotationVell>200.0f)
+	if(rotationVell>300.0f)
 	{
 		rotationVell = 200.0f;
 		outputErrCounter[1]++;
@@ -225,7 +224,7 @@ void ThreeWheelVelControl(float speed, float direction, float rotationVell)
 			debugInfo.opsStatus|=0x20;	
 		}
 	}
-	else if(rotationVell < -200.0f)
+	else if(rotationVell < -300.0f)
 	{
 		rotationVell = -200.0f;
 		outputErrCounter[2]++;
@@ -238,7 +237,7 @@ void ThreeWheelVelControl(float speed, float direction, float rotationVell)
 		}
 	}
 	
-	robotR = 100.0f;
+	robotR = 291.32f;
 	rotationVell = rotationVell / CHANGE_TO_ANGLE;
 	Vx = speed * arm_cos_f32(direction * CHANGE_TO_RADIAN);
 	Vy = speed * arm_sin_f32(direction * CHANGE_TO_RADIAN);
